@@ -1,12 +1,8 @@
 import * as ort from 'onnxruntime-web';
 
-/**
- * AI МОДЕЛУУДЫН НЭГДСЭН ФАЙЛ
- * Энэхүү файл нь дүрэмд суурилсан (Rule-based) болон Машин сургалтын (ONNX) 
- * загваруудыг хоёуланг нь агуулна.
- */
 
-// --- 1. ДҮРЭМД СУУРИЛСАН МОДЕЛ (Rule-based Inference) ---
+
+
 
 export interface AIResult {
   diabetesRisk: number;
@@ -16,10 +12,7 @@ export interface AIResult {
   reasons: string[];
 }
 
-/**
- * САЙЖРУУЛСАН AI МОДЕЛ: 
- * Kaggle-ийн бодит дата + Монгол улсын STEPS 2005/2013 статистик.
- */
+
 export const predictHealthRisk = (answers: Record<string, string>): AIResult => {
   const age = Number(answers.age || 25);
   const weight = Number(answers.weight || 65);
@@ -36,7 +29,7 @@ export const predictHealthRisk = (answers: Record<string, string>): AIResult => 
 
   const reasons: string[] = [];
 
-  // 1. ЧИХРИЙН ШИЖИНГИЙН ЭРСДЭЛ
+  
   let diabBase = 5;
   if (bmi > 25) {
     diabBase += 25;
@@ -56,7 +49,7 @@ export const predictHealthRisk = (answers: Record<string, string>): AIResult => 
     reasons.push("Гэр бүлийн генетик удамшил");
   }
 
-  // 2. ЗҮРХ СУДАСНЫ ЭРСДЭЛ
+  
   let heartBase = 10;
   if (systolic > 140) {
     heartBase += 35;
@@ -75,7 +68,7 @@ export const predictHealthRisk = (answers: Record<string, string>): AIResult => 
     reasons.push("Идэвхтэй тамхидалт");
   }
 
-  // 3. ХАВДРЫН ЭРСДЭЛ
+  
   let cancerBase = 5;
   if (smoking === 'current') {
     cancerBase += 35;
@@ -110,7 +103,7 @@ export const predictHealthRisk = (answers: Record<string, string>): AIResult => 
   };
 };
 
-// --- 2. МАШИН СУРГАЛТЫН МОДЕЛ (Offline ONNX Inference) ---
+
 
 export class HealthAI {
   private static session: ort.InferenceSession | null = null;

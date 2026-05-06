@@ -29,7 +29,7 @@ export function OnboardingScreen({ onStart, onViewProfile }: OnboardingScreenPro
           calculateDistances(latitude, longitude);
         },
         () => {
-          // Fallback to Ulaanbaatar center
+          
           const ubCenter = { lat: 47.9188, lng: 106.9176 };
           setUserLocation(ubCenter);
           calculateDistances(ubCenter.lat, ubCenter.lng);
@@ -91,7 +91,7 @@ export function OnboardingScreen({ onStart, onViewProfile }: OnboardingScreenPro
           animation: sosPulseGlow 3s infinite;
         }
       `}</style>
-      {/* Header */}
+      {}
       <div className="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 overflow-hidden rounded-xl shadow-md border border-gray-50 bg-white flex items-center justify-center">
@@ -112,10 +112,10 @@ export function OnboardingScreen({ onStart, onViewProfile }: OnboardingScreenPro
         </motion.button>
       </div>
 
-      {/* Content */}
+      {}
       <div className="flex-1 px-6 py-8 overflow-auto">
         <div className="max-w-md mx-auto w-full space-y-8">
-          {/* Hero Section */}
+          {}
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -144,7 +144,7 @@ export function OnboardingScreen({ onStart, onViewProfile }: OnboardingScreenPro
             </div>
           </motion.div>
 
-          {/* Daily Tip Section */}
+          {}
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
               <Bell className="w-4 h-4 text-orange-500" />
@@ -161,7 +161,7 @@ export function OnboardingScreen({ onStart, onViewProfile }: OnboardingScreenPro
             </div>
           </div>
 
-          {/* Quick Tools */}
+          {}
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
               <Search className="w-4 h-4 text-blue-500" />
@@ -189,7 +189,7 @@ export function OnboardingScreen({ onStart, onViewProfile }: OnboardingScreenPro
             </div>
           </div>
 
-          {/* Nearby Hospitals Tree Structure */}
+          {}
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
               <MapPin className="w-4 h-4 text-red-500" />
@@ -197,7 +197,7 @@ export function OnboardingScreen({ onStart, onViewProfile }: OnboardingScreenPro
             </h3>
             <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
               {(() => {
-                // Group hospitals with distance by type
+                
                 const grouped: Record<string, Array<typeof hospitalsData[0] & { distance?: number }>> = {
                   "Public": [],
                   "Private": [],
@@ -217,7 +217,7 @@ export function OnboardingScreen({ onStart, onViewProfile }: OnboardingScreenPro
                   
                   return (
                     <div key={type} className={typeIndex > 0 ? "border-t border-gray-100" : ""}>
-                      {/* Type Header */}
+                      {}
                       <motion.button
                         onClick={() => toggleType(type)}
                         className={`w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors`}
@@ -243,7 +243,7 @@ export function OnboardingScreen({ onStart, onViewProfile }: OnboardingScreenPro
                         </motion.div>
                       </motion.button>
 
-                      {/* Hospital List */}
+                      {}
                       <AnimatePresence>
                         {isExpanded && (
                           <motion.div
@@ -301,7 +301,7 @@ export function OnboardingScreen({ onStart, onViewProfile }: OnboardingScreenPro
                                         )}
                                       </div>
                                       
-                                      {/* Distance Display */}
+                                      {}
                                       {hospital.distance !== undefined && (
                                         <p className="text-xs font-bold text-blue-600 mt-1.5 flex items-center gap-1">
                                           <MapPin className="w-3 h-3" />
@@ -329,7 +329,7 @@ export function OnboardingScreen({ onStart, onViewProfile }: OnboardingScreenPro
                                       </div>
                                     </div>
 
-                                    {/* Location Button */}
+                                    {}
                                     <motion.button
                                       whileHover={{ scale: 1.1 }}
                                       whileTap={{ scale: 0.95 }}

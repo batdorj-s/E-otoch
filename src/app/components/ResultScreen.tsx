@@ -177,13 +177,13 @@ export function ResultScreen({ answers, aiResults, onRestart, onViewProfile }: R
           )}
         </motion.div>
 
-        {/* Hospital Finder */}
+        {}
         <HospitalFinder 
           isEmergencyMode={level === "emergency"} 
           requiredSpecialty={aiResults.heartRisk > aiResults.diabetesRisk ? "Cardiology" : "Endocrinology"}
         />
 
-        {/* Gemini AI Advice Card */}
+        {}
         {aiResults.aiAdvice && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -204,7 +204,7 @@ export function ResultScreen({ answers, aiResults, onRestart, onViewProfile }: R
           </motion.div>
         )}
 
-        {/* AI Contribution Analysis (SHAP-style) */}
+        {}
         {aiResults.contributions && aiResults.contributions.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -238,7 +238,7 @@ export function ResultScreen({ answers, aiResults, onRestart, onViewProfile }: R
           </motion.div>
         )}
 
-        {/* Radar Chart Card */}
+        {}
         {level !== "emergency" && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -283,7 +283,7 @@ export function ResultScreen({ answers, aiResults, onRestart, onViewProfile }: R
           </motion.div>
         )}
 
-        {/* Recommendations */}
+        {}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -312,7 +312,7 @@ export function ResultScreen({ answers, aiResults, onRestart, onViewProfile }: R
           </ul>
         </motion.div>
 
-        {/* Action Buttons */}
+        {}
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={onRestart}

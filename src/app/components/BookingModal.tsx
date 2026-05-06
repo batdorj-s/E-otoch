@@ -60,7 +60,7 @@ export function BookingModal({ hospital, isOpen, onClose, onConfirm, initialSpec
           exit={{ y: "100%" }}
           className="relative w-full max-w-md bg-white rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl"
         >
-          {/* Header */}
+          {}
           <div className="px-6 py-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
             <div>
               <h3 className="font-bold text-gray-900 text-lg line-clamp-1">{hospital.name}</h3>

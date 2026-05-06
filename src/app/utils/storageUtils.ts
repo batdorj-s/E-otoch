@@ -2,10 +2,7 @@ import CryptoJS from 'crypto-js';
 
 const SECRET_KEY = 'eotoch-secure-storage-key-2026';
 
-/**
- * Secure Storage Utility
- * Encrypts and decrypts data stored in localStorage to ensure user privacy.
- */
+
 export const secureStorage = {
   save: (key: string, data: any) => {
     try {

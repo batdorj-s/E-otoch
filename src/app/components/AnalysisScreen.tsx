@@ -23,7 +23,7 @@ export function AnalysisScreen({ onComplete }: AnalysisScreenProps) {
           animate={{ opacity: 1, scale: 1 }}
           className="bg-white rounded-3xl shadow-2xl p-8 text-center flex flex-col items-center justify-center min-h-[600px]"
         >
-          {/* Animated Icon */}
+          {}
           <div className="relative mb-8 flex-shrink-0">
             <motion.div
               animate={{
@@ -44,7 +44,7 @@ export function AnalysisScreen({ onComplete }: AnalysisScreenProps) {
               </div>
             </motion.div>
 
-            {/* Pulse rings */}
+            {}
             {[0, 1, 2].map((i) => (
               <motion.div
                 key={i}
@@ -80,7 +80,7 @@ export function AnalysisScreen({ onComplete }: AnalysisScreenProps) {
             Таны эрүүл мэндийн өгөгдлийг боловсруулж байна
           </motion.p>
 
-          {/* Progress steps */}
+          {}
           <div className="space-y-3 mb-6">
             {[
               { icon: Database, text: "Kaggle эмнэлгийн өгөгдлийг ачаалж байна", delay: 0 },

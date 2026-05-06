@@ -1,7 +1,4 @@
-/**
- * Eotoch - Gemini AI Integration
- * This service handles personalized health advice generation using Google Gemini API.
- */
+
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;

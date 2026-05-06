@@ -116,7 +116,7 @@ export function ProfileScreen({ answers, aiResults, onBack }: ProfileScreenProps
             </div>
           </div>
 
-          {/* User Info Card */}
+          {}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -161,7 +161,7 @@ export function ProfileScreen({ answers, aiResults, onBack }: ProfileScreenProps
             </div>
           </motion.div>
 
-          {/* AI Risk Stats */}
+          {}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -191,7 +191,7 @@ export function ProfileScreen({ answers, aiResults, onBack }: ProfileScreenProps
             </div>
           </motion.div>
 
-          {/* Health History */}
+          {}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -217,7 +217,7 @@ export function ProfileScreen({ answers, aiResults, onBack }: ProfileScreenProps
             </div>
           </motion.div>
 
-          {/* Print Disclaimer (Visible only in Print) */}
+          {}
           <div className="hidden print:block mt-8 pt-4 border-t border-gray-100">
             <p className="text-[10px] text-gray-400 leading-relaxed">
               * Энэхүү тайлан нь хиймэл оюун ухааны алгоритм дээр суурилсан урьдчилсан үнэлгээ бөгөөд оношилгоо биш юм. 
@@ -225,7 +225,7 @@ export function ProfileScreen({ answers, aiResults, onBack }: ProfileScreenProps
             </p>
           </div>
 
-          {/* Action Footer (No Print) */}
+          {}
           <div className="pb-8 pt-4 no-print">
              <button
                onClick={() => window.print()}

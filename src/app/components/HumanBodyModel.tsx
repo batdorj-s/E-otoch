@@ -29,7 +29,7 @@ export function HumanBodyModel({ selectedParts, onPartSelect }: HumanBodyModelPr
         className="w-full max-w-sm mx-auto"
         style={{ maxHeight: "400px" }}
       >
-        {/* Body outline */}
+        {}
         <defs>
           <filter id="glow">
             <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
@@ -76,7 +76,7 @@ export function HumanBodyModel({ selectedParts, onPartSelect }: HumanBodyModelPr
         })}
       </svg>
 
-      {/* Selected parts list */}
+      {}
       {selectedParts.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2 justify-center">
           {selectedParts.map((partId) => {
