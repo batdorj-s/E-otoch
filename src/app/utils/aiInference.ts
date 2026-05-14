@@ -1,3 +1,5 @@
+import * as ort from "onnxruntime-web";
+
 export interface AIResult {
   diabetesRisk: number;
   heartRisk: number;
@@ -9,10 +11,26 @@ export interface AIResult {
     value: number;
     color: string;
   }[];
+  mlRiskLevel?: string; // New field for real ML output
 }
 
+// Global variable to keep the session
+let session: ort.InferenceSession | null = null;
 
-export const predictHealthRisk = (answers: Record<string, string>): AIResult => {
+async function loadModel() {
+  if (!session) {
+    try {
+      session = await ort.InferenceSession.create("/healthModel.onnx");
+      console.log("ONNX Model loaded successfully");
+    } catch (e) {
+      console.error("Failed to load ONNX model", e);
+    }
+  }
+}
+
+export const predictHealthRisk = async (answers: Record<string, string>): Promise<AIResult> => {
+  await loadModel();
+
   const age = Number(answers.age || 25);
   const weight = Number(answers.weight || 65);
   const height = Number(answers.height || 170);
@@ -25,7 +43,36 @@ export const predictHealthRisk = (answers: Record<string, string>): AIResult => 
   const gender = answers.gender || 'male';
   const geneticRisk = answers.genetic_risk === 'yes';
   const specificSymptom = answers.specific_symptoms || 'none';
+  const activity = answers.activity === 'low' ? 1 : 0;
+  const fruit_veg = answers.diet === 'bad' ? 1 : 0;
 
+  // 1. REAL ML INFERENCE (Random Forest via ONNX)
+  let mlRiskLevel = "Low";
+  if (session) {
+    try {
+      // Input features match train_model.py: 
+      // ['age', 'gender', 'smoking', 'alcohol', 'fruit_veg', 'activity', 'bmi', 'sys_bp']
+      const inputData = new Float32Array([
+        age,
+        gender === 'male' ? 1 : 0,
+        smoking === 'current' ? 1 : 0,
+        alcoholFreq !== 'never' ? 1 : 0,
+        fruit_veg,
+        activity,
+        bmi,
+        systolic
+      ]);
+      const tensor = new ort.Tensor("float32", inputData, [1, 8]);
+      const results = await session.run({ float_input: tensor });
+      const output = results.output_label.data[0] as bigint;
+      mlRiskLevel = output === BigInt(2) ? "High" : output === BigInt(1) ? "Moderate" : "Low";
+      console.log("Real ML Inference Result:", mlRiskLevel);
+    } catch (e) {
+      console.error("Inference failed", e);
+    }
+  }
+
+  // 2. EXPLAINABLE LOGIC (Rule-based for UI and specific risks)
   const reasons: string[] = [];
   const contributionMap: Record<string, number> = {
     "Жин (BMI)": 0,
@@ -36,7 +83,6 @@ export const predictHealthRisk = (answers: Record<string, string>): AIResult => 
     "Генетик/Бусад": 0
   };
 
-  
   let diabBase = 5;
   if (bmi > 25) {
     diabBase += 25;
@@ -59,7 +105,6 @@ export const predictHealthRisk = (answers: Record<string, string>): AIResult => 
     reasons.push("Гэр бүлийн генетик удамшил");
   }
 
-  
   let heartBase = 10;
   if (systolic > 140) {
     heartBase += 35;
@@ -77,7 +122,6 @@ export const predictHealthRisk = (answers: Record<string, string>): AIResult => 
     reasons.push("Идэвхтэй тамхидалт");
   }
 
-  
   let cancerBase = 5;
   if (smoking === 'current') {
     cancerBase += 35;
@@ -102,7 +146,6 @@ export const predictHealthRisk = (answers: Record<string, string>): AIResult => 
     reasons.push("Таны амьдралын хэв маяг болон эрүүл мэндийн үзүүлэлтүүд одоогоор эрсдэл багатай байна");
   }
 
-  
   const contributions = Object.entries(contributionMap)
     .filter(([_, value]) => value > 0)
     .map(([label, value]) => ({
@@ -122,6 +165,7 @@ export const predictHealthRisk = (answers: Record<string, string>): AIResult => 
     cancerRisk: Math.round(cancerRisk),
     overallScore: Math.round((diabetesRisk + heartRisk + cancerRisk) / 3),
     reasons: Array.from(new Set(reasons)),
-    contributions
+    contributions,
+    mlRiskLevel // Return the real ML result too
   };
 };
