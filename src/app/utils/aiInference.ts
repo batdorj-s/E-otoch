@@ -1,4 +1,5 @@
-import * as ort from "onnxruntime-web";
+// Using global ort from script tag if available, otherwise fallback to import
+const ort = (window as any).ort;
 
 export interface AIResult {
   diabetesRisk: number;
@@ -15,15 +16,38 @@ export interface AIResult {
 }
 
 // Global variable to keep the session
-let session: ort.InferenceSession | null = null;
+let session: any = null;
 
 async function loadModel() {
+  if (!ort) {
+    console.error("ONNX Runtime (ort) not found. Check if the script tag in index.html is correct.");
+    return;
+  }
+
   if (!session) {
     try {
-      session = await ort.InferenceSession.create("/healthModel.onnx");
-      console.log("ONNX Model loaded successfully");
+      // Configuration to prevent 'e.getValue is not a function' error
+      ort.env.wasm.numThreads = 1;
+      ort.env.wasm.proxy = false;
+      ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.0/dist/";
+
+      // Try WASM first with conservative settings
+      session = await ort.InferenceSession.create("/healthModel.onnx", { 
+        executionProviders: ["wasm"],
+        graphOptimizationLevel: "all"
+      });
+      console.log("ONNX Model loaded successfully with wasm backend");
     } catch (e) {
-      console.error("Failed to load ONNX model", e);
+      console.warn("WASM backend failed, trying webgl...", e);
+      try {
+        // Fallback to WebGL if WASM fails
+        session = await ort.InferenceSession.create("/healthModel.onnx", { 
+          executionProviders: ["webgl"] 
+        });
+        console.log("ONNX Model loaded successfully with webgl backend");
+      } catch (webglError) {
+        console.error("All ONNX backends failed", webglError);
+      }
     }
   }
 }
@@ -63,9 +87,17 @@ export const predictHealthRisk = async (answers: Record<string, string>): Promis
         systolic
       ]);
       const tensor = new ort.Tensor("float32", inputData, [1, 8]);
-      const results = await session.run({ float_input: tensor });
-      const output = results.output_label.data[0] as bigint;
-      mlRiskLevel = output === BigInt(2) ? "High" : output === BigInt(1) ? "Moderate" : "Low";
+      
+      console.log("Session output names:", session.outputNames);
+      
+      // IMPORTANT: Explicitly request ONLY 'output_label' to skip the
+      // non-tensor probability output which causes the ERROR_CODE: 9 error.
+      const results = await session.run({ float_input: tensor }, ["output_label"]);
+      
+      const outputRaw = results["output_label"].data[0];
+      const output = typeof outputRaw === 'bigint' ? Number(outputRaw) : Number(outputRaw);
+      
+      mlRiskLevel = output === 2 ? "High" : output === 1 ? "Moderate" : "Low";
       console.log("Real ML Inference Result:", mlRiskLevel);
     } catch (e) {
       console.error("Inference failed", e);

@@ -180,7 +180,7 @@ export function ResultScreen({ answers, aiResults, onRestart, onViewProfile }: R
         {}
         <HospitalFinder 
           isEmergencyMode={level === "emergency"} 
-          requiredSpecialty={aiResults.heartRisk > aiResults.diabetesRisk ? "Cardiology" : "Endocrinology"}
+          requiredSpecialty={aiResults.heartRisk > aiResults.diabetesRisk ? "Зүрх судас" : "Дотоод шүүрэл"}
         />
 
         {}

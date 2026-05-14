@@ -156,6 +156,7 @@ export function AssessmentScreen({ onComplete }: AssessmentScreenProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [selectedBodyParts, setSelectedBodyParts] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSOS, setShowSOS] = useState(false);
   const [particleTrail, setParticleTrail] = useState<Array<{id: string, x: number, y: number}>>([]);
 
@@ -167,6 +168,8 @@ export function AssessmentScreen({ onComplete }: AssessmentScreenProps) {
   const hasAnswer = isSymptomQuestion ? selectedBodyParts.length > 0 : !!answers[currentQ.id] || isSliderQuestion;
 
   const handleNext = () => {
+    if (isSubmitting) return;
+
     let finalAnswers = { ...answers };
     if (isSymptomQuestion) {
       finalAnswers.symptoms = selectedBodyParts.join(",");
@@ -178,6 +181,7 @@ export function AssessmentScreen({ onComplete }: AssessmentScreenProps) {
       setAnswers(finalAnswers);
       setCurrentQuestion(currentQuestion + 1);
     } else {
+      setIsSubmitting(true);
       onComplete(finalAnswers);
     }
   };
@@ -393,22 +397,31 @@ export function AssessmentScreen({ onComplete }: AssessmentScreenProps) {
       >
         <motion.button
           onClick={handleNext}
-          disabled={!hasAnswer}
+          disabled={!hasAnswer || isSubmitting}
           animate={{
-            backgroundColor: hasAnswer ? "#3B82F6" : "#D1D5DB",
-            boxShadow: hasAnswer ? "0 10px 25px rgba(59, 130, 246, 0.3)" : "0 5px 10px rgba(0, 0, 0, 0.05)"
+            backgroundColor: hasAnswer && !isSubmitting ? "#3B82F6" : "#D1D5DB",
+            boxShadow: hasAnswer && !isSubmitting ? "0 10px 25px rgba(59, 130, 246, 0.3)" : "0 5px 10px rgba(0, 0, 0, 0.05)"
           }}
-          whileHover={hasAnswer ? { scale: 1.02 } : {}}
-          whileTap={hasAnswer ? { scale: 0.98 } : {}}
-          className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-semibold text-white transition-all active:scale-95 cursor-pointer"
+          whileHover={hasAnswer && !isSubmitting ? { scale: 1.02 } : {}}
+          whileTap={hasAnswer && !isSubmitting ? { scale: 0.98 } : {}}
+          className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-semibold text-white transition-all active:scale-95 cursor-pointer disabled:cursor-not-allowed"
         >
-          {currentQuestion < questions.length - 1 ? "Дараах асуулт" : "Дуусгах"}
-          <motion.div
-            animate={{ x: hasAnswer ? 4 : 0 }}
-            transition={{ type: "spring", stiffness: 200 }}
-          >
-            <ChevronRight className="w-5 h-5" />
-          </motion.div>
+          {isSubmitting ? (
+             <div className="flex items-center gap-2">
+               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+               Түр хүлээнэ үү...
+             </div>
+          ) : (
+            <>
+              {currentQuestion < questions.length - 1 ? "Дараах асуулт" : "Дуусгах"}
+              <motion.div
+                animate={{ x: hasAnswer ? 4 : 0 }}
+                transition={{ type: "spring", stiffness: 200 }}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </motion.div>
+            </>
+          )}
         </motion.button>
       </motion.div>
     </div>

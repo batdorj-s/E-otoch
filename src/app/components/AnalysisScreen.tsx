@@ -57,8 +57,8 @@ export function AnalysisScreen({ onComplete }: AnalysisScreenProps) {
                   repeat: Infinity,
                   delay: i * 0.6,
                 }}
-                className="absolute inset-0 border-4 border-blue-400 rounded-2xl"
-                style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
+                className="absolute border-4 border-blue-400 rounded-2xl"
+                style={{ top: "50%", left: "50%", x: "-50%", y: "-50%" }}
               />
             ))}
           </div>

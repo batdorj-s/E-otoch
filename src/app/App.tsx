@@ -34,18 +34,19 @@ export default function App() {
 
   const handleAssessmentComplete = async (userAnswers: Record<string, string>) => {
     setAnswers(userAnswers);
-    const results = predictHealthRisk(userAnswers);
-    setAiResults(results);
     setCurrentScreen("analysis");
-
+    
     try {
+      const results = await predictHealthRisk(userAnswers);
+      setAiResults(results);
+
       const advice = await getAIAdvice(userAnswers, results);
       const updatedResults = { ...results, aiAdvice: advice };
       setAiResults(updatedResults);
       secureStorage.save("eotoch_answers", userAnswers);
       secureStorage.save("eotoch_results", updatedResults);
     } catch (e) {
-      console.error("Gemini advice failed", e);
+      console.error("Health prediction or Gemini advice failed", e);
     }
   };
 
