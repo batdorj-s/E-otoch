@@ -87,7 +87,7 @@ onx = convert_sklearn(model, initial_types=initial_type, target_opset=12)
 with open("healthModel.onnx", "wb") as f:
     f.write(onx.SerializeToString())
 
-print("✅ Model successfully exported as healthModel.onnx")
+print(" Model successfully exported as healthModel.onnx")
 
 
 """
