@@ -1,7 +1,7 @@
 import { getRelevantKnowledge } from "./knowledgeBase";
 import { getAIAdvice } from "./geminiAI";
 
-const OLLAMA_URL = "http://localhost:11434/api/chat";
+const OLLAMA_URL = "http://localhost:11434/api/generate";
 const MODEL_NAME = "llama3"; // Та өөрийн суулгасан моделын нэрийг энд оруулж болно (жишээ нь: llama3, gemma2, mistral, llama3.1)
 
 /**
@@ -96,22 +96,13 @@ export const generateLocalRAGAdvice = (answers: Record<string, string>, aiResult
 
 export const getOllamaAdvice = async (answers: Record<string, string>, aiResults: any): Promise<string> => {
   const relevantFacts = getRelevantKnowledge(answers, aiResults);
-  const bmiVal = answers.weight && answers.height 
-    ? (Number(answers.weight) / (Math.pow(Number(answers.height) / 100, 2))).toFixed(1) 
+  const bmiVal = answers.weight && answers.height
+    ? (Number(answers.weight) / (Math.pow(Number(answers.height) / 100, 2))).toFixed(1)
     : 'Тодорхойгүй';
 
-  const systemPrompt = `
-    Чи бол "Eotoch" системийн ахлах зөвлөх эмч, Монгол улсын эрүүл мэндийн шинжээч хиймэл оюун ухаан юм.
-    Таны үүрэг бол хэрэглэгчийн эрүүл мэндийн үзүүлэлтүүд болон Монгол улсын STEPS судалгааны баримтуудыг харьцуулж, мэргэжлийн, байгалийн уянгалаг бөгөөд амьдралд шууд хэрэгжихүйц эмчийн зөвлөгөөг боловсруулах явдал юм.
-
-    АНХААРАХ ШААРДЛАГА:
-    - Зөвхөн Монгол хэлээр хариул.
-    - Хариултыг заавал дараах 4 бүлэг хэсэгт хувааж бич.
-    - Миний өгсөн даалгаврын заавар эсвэл даалгавар өгөхөд ашигласан загвар текстийг өөрөө давтаж бичиж болохгүй! Зөвхөн хэрэглэгчийн бодит өгөгдлийг тайлбарлаж бич.
-  `;
-
-  const userPrompt = `
-    Дараах эрүүл мэндийн өгөгдөл дээр үндэслэн ахлах эмчийн нарийвчилсан зөвлөгөөг боловсруулж өгнө үү.
+  const prompt = `
+    Чи бол "Eotoch" системийн ахлах зөвлөх эмч, эрүүл мэндийн шинжээч хиймэл оюун ухаан юм. 
+    Таны зорилго бол хэрэглэгчийн эрүүл мэндийн өгөгдөлд гүнзгий дүн шинжилгээ хийж, шинжлэх ухааны үндэслэлтэй, мэргэжлийн бөгөөд амьдралд хэрэгжихүйц зөвлөгөө өгөхөд оршино.
 
     ХЭРЭГЛЭГЧИЙН ӨГӨГДӨЛ:
     - Нас/Хүйс: ${answers.age} нас, ${answers.gender === 'male' ? 'Эрэгтэй' : 'Эмэгтэй'}
@@ -119,25 +110,30 @@ export const getOllamaAdvice = async (answers: Record<string, string>, aiResults
     - Цусны даралт (Систол): ${answers.bp_systolic || 'Тодорхойгүй'} mmHg
     - Хорт зуршил: Тамхи - ${answers.smoking || 'Тодорхойгүй'}, Архи - ${answers.alcohol_freq || 'Тодорхойгүй'}
     - Давсны хэрэглээ (1-10 оноо): ${answers.salt_intake || 'Тодорхойгүй'}
-    - Нэмэлт зовиур: ${answers.other_symptoms || 'Тусгайлан дурдсан зовиургүй'}
+    - ЯРИАГААР БОЛОН БИЧГЭЭР ӨГСӨН ЗОВИУР: ${answers.other_symptoms || 'Тусгайлан дурдсан зовиургүй'}
     
-    МЭДЛЭГИЙН САНГИЙН СУДАЛГААНЫ БАРИМТУУД:
+    МЭДЛЭГИЙН САНГИЙН БАРИМТУУД (Эдгээр бодит тоон дээр үндэслэж зөвлөгөөгөө баталгаажуул):
     ${relevantFacts}
 
-    ML МОДЕЛЫН ЭРСДЭЛИЙН ҮНЭЛГЭЭ:
+    ML Моделын тооцоолсон эрсдэлийн түвшин:
     - Чихрийн шижин: ${aiResults.diabetesRisk || 0}%
     - Зүрх судасны өвчлөл: ${aiResults.heartRisk || 0}%
     - Хавдрын эрсдэл: ${aiResults.cancerRisk || 0}%
     
-    Хариултын формат:
-    1. **Зовиурын дүн шинжилгээ:** (Хэрэглэгчийн хэлсэн зовиур дээр үндэслэн эмнэлзүйн үүднээс юуг анхаарах ёстойг тайлбарлаж зөвлөх)
-    2. **Эрсдэлийн дүн шинжилгээ:** (Тоон үзүүлэлт болон судалгааны баримтуудыг Монгол улсын дундажтай харьцуулж дүгнэх)
-    3. **Тодорхой Action Plan:** (Амьдралд хэрэгжихүйц 3-4 тодорхой зөвлөмж)
-    4. **Дүгнэлт:** (Урам зориг өгсөн дулаан төгсгөл. Санамж: Эмнэлгийн оношилгоог орлохгүй гэдгийг жижиг үсгээр төгсгөлд нь нэм.)
+    Зөвлөгөөг дараах бүтцийн дагуу "МАШ ЧАНАРТАЙ, БАРИМТТАЙ" бичнэ үү:
+    1. **Зовиурын дүн шинжилгээ:** Хэрэглэгчийн хэлсэн зовиурыг (хэрэв байгаа бол) хамгийн түрүүнд анхаарч, ямар шалтгаантай байж болох талаар тайлбарла.
+    2. **Эрсдэлийн дүн шинжилгээ:** Хэрэглэгчийн тоон үзүүлэлтийг Мэдлэгийн сан дахь Монгол улсын дундажтай харьцуулж тайлбарла.
+    3. **Тодорхой Action Plan:** Баримт дээр суурилсан практик зөвлөмж.
+    4. **Дүгнэлт:** Урам зориг өгсөн төгсгөл.
+
+    ЧАРУУЛГА: 
+    - Зөвхөн Монгол хэлээр хариул. 
+    - Мэдлэгийн санд байгаа тоо баримтыг ашиглаж, яагаад ийм зөвлөгөө өгч байгаагаа баталгаажуул.
+    - Мэргэжлийн эмчийн оношилгоог орлохгүй гэдгийг жижиг үсгээр төгсгөлд нь сануул.
   `;
 
   try {
-    console.log("Connecting to local Ollama Chat API...");
+    console.log("Connecting to local Ollama API...");
     const response = await fetch(OLLAMA_URL, {
       method: "POST",
       headers: {
@@ -145,13 +141,10 @@ export const getOllamaAdvice = async (answers: Record<string, string>, aiResults
       },
       body: JSON.stringify({
         model: MODEL_NAME,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
+        prompt: prompt,
         stream: false,
         options: {
-          temperature: 0.6,
+          temperature: 0.7,
           top_p: 0.9,
           num_predict: 800,
         }
@@ -163,10 +156,10 @@ export const getOllamaAdvice = async (answers: Record<string, string>, aiResults
     }
 
     const data = await response.json();
-    
-    if (data.message && data.message.content) {
-      console.log("Successfully fetched advice from local Ollama Chat!");
-      return data.message.content;
+
+    if (data.response) {
+      console.log("Successfully fetched advice from local Ollama!");
+      return data.response;
     } else {
       console.warn("Ollama response format unexpected. Falling back to Gemini...");
       const backup = await getAIAdvice(answers, aiResults);
@@ -178,11 +171,11 @@ export const getOllamaAdvice = async (answers: Record<string, string>, aiResults
     }
   } catch (error) {
     console.warn("Local Ollama connection failed. Falling back to Google Gemini AI API...", error);
-    
+
     try {
       const backupAdvice = await getAIAdvice(answers, aiResults);
       if (backupAdvice.startsWith("Уучлаарай") || backupAdvice.startsWith("AI зөвлөгөө")) {
-        console.warn("Gemini backup returned an error. Using local RAG fallback advice...");
+        console.warn("Gemini backup returned an error (e.g. 503 Service Unavailable). Using local RAG fallback advice...");
         return generateLocalRAGAdvice(answers, aiResults);
       }
       return backupAdvice;
