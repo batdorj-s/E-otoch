@@ -1,6 +1,8 @@
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { AlertCircle, CheckCircle, AlertTriangle, XCircle, RefreshCw, Activity, Info, PhoneCall, User, Sparkles } from "lucide-react";
+import { AlertCircle, CheckCircle, AlertTriangle, XCircle, RefreshCw, Activity, Info, PhoneCall, User, Sparkles, Volume2, VolumeX } from "lucide-react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
+import { speakText } from "../utils/voiceUtils";
 import { HospitalFinder } from "./HospitalFinder";
 import { AIResult } from "../utils/aiInference";
 
@@ -57,6 +59,49 @@ const riskConfig = {
 };
 
 export function ResultScreen({ answers, aiResults, onRestart, onViewProfile }: ResultScreenProps) {
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speechSession, setSpeechSession] = useState<{ stop: () => void } | null>(null);
+  const [speakError, setSpeakError] = useState("");
+
+  useEffect(() => {
+    return () => {
+      if (speechSession) {
+        speechSession.stop();
+      }
+    };
+  }, [speechSession]);
+
+  const handleToggleSpeech = async () => {
+    if (isSpeaking) {
+      if (speechSession) {
+        speechSession.stop();
+        setSpeechSession(null);
+      }
+      setIsSpeaking(false);
+    } else {
+      setSpeakError("");
+      try {
+        const session = await speakText(
+          aiResults.aiAdvice || "",
+          () => setIsSpeaking(true),
+          () => {
+            setIsSpeaking(false);
+            setSpeechSession(null);
+          },
+          (err) => {
+            setSpeakError(err);
+            setIsSpeaking(false);
+            setSpeechSession(null);
+          }
+        );
+        setSpeechSession(session);
+      } catch (e) {
+        console.error("Speech playback error", e);
+        setSpeakError("Аудиог ажиллуулахад алдаа гарлаа.");
+      }
+    }
+  };
+
   const height = Number(answers.height) / 100;
   const weight = Number(answers.weight);
   const bmi = weight / (height * height);
@@ -194,10 +239,45 @@ export function ResultScreen({ answers, aiResults, onRestart, onViewProfile }: R
             <div className="absolute top-0 right-0 p-4 opacity-10">
               <Sparkles className="w-20 h-20" />
             </div>
-            <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-yellow-300" />
-              Eotoch AI-ийн зөвлөгөө
-            </h2>
+            
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-yellow-300" />
+                Eotoch AI-ийн зөвлөгөө
+              </h2>
+              
+              <div className="flex items-center gap-2 z-10">
+                {speakError && (
+                  <span className="text-[10px] bg-red-500/20 text-red-100 px-2 py-1 rounded-lg max-w-[120px] truncate">
+                    {speakError}
+                  </span>
+                )}
+                
+                <motion.button
+                  onClick={handleToggleSpeech}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-md cursor-pointer ${
+                    isSpeaking 
+                      ? "bg-red-500 text-white shadow-red-200" 
+                      : "bg-white text-indigo-700 hover:bg-indigo-50"
+                  }`}
+                >
+                  {isSpeaking ? (
+                    <>
+                      <VolumeX className="w-4 h-4" />
+                      Зогсоох
+                    </>
+                  ) : (
+                    <>
+                      <Volume2 className="w-4 h-4 animate-bounce" />
+                      Сонсох
+                    </>
+                  )}
+                </motion.button>
+              </div>
+            </div>
+
             <div className="text-sm leading-relaxed space-y-2 opacity-90 whitespace-pre-line">
               {aiResults.aiAdvice}
             </div>

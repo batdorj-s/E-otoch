@@ -7,7 +7,7 @@ import { ProfileScreen } from "./components/ProfileScreen";
 import { PhoneCall, X, User } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { predictHealthRisk, AIResult } from "./utils/aiInference";
-import { getAIAdvice } from "./utils/geminiAI";
+import { getOllamaAdvice } from "./utils/ollamaAI";
 import { secureStorage } from "./utils/storageUtils";
 
 type Screen = "onboarding" | "assessment" | "analysis" | "result" | "profile";
@@ -40,13 +40,13 @@ export default function App() {
       const results = await predictHealthRisk(userAnswers);
       setAiResults(results);
 
-      const advice = await getAIAdvice(userAnswers, results);
+      const advice = await getOllamaAdvice(userAnswers, results);
       const updatedResults = { ...results, aiAdvice: advice };
       setAiResults(updatedResults);
       secureStorage.save("eotoch_answers", userAnswers);
       secureStorage.save("eotoch_results", updatedResults);
     } catch (e) {
-      console.error("Health prediction or Gemini advice failed", e);
+      console.error("Health prediction or Ollama advice failed", e);
     }
   };
 

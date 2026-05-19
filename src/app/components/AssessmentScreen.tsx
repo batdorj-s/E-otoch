@@ -2,14 +2,15 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import * as Progress from "@radix-ui/react-progress";
 import * as RadioGroup from "@radix-ui/react-radio-group";
-import { ChevronRight, ChevronLeft, User, Ruler, Weight, Activity, Thermometer, Calendar, Wind, Wine, Beaker, Users, AlertCircle, Phone } from "lucide-react";
+import { ChevronRight, ChevronLeft, User, Ruler, Weight, Activity, Thermometer, Calendar, Wind, Wine, Beaker, Users, AlertCircle, Phone, Mic, MicOff, Trash2, Volume2 } from "lucide-react";
 import { HumanBodyModel } from "./HumanBodyModel";
 import { Slider } from "./ui/slider";
+import { startSpeechToText } from "../utils/voiceUtils";
 
 interface Question {
   id: string;
   text: string;
-  type: "radio" | "slider" | "body-map";
+  type: "radio" | "slider" | "body-map" | "voice";
   icon?: any;
   options?: { value: string; label: string; score: number }[];
   min?: number;
@@ -142,6 +143,12 @@ const questions: Question[] = [
     ],
   },
   {
+    id: "other_symptoms",
+    text: "Танд илэрч буй бусад зовиур, шинж тэмдэг бий юу? (Энд бичих эсвэл яриагаар хэлж болно)",
+    type: "voice",
+    icon: Mic,
+  },
+  {
     id: "symptoms",
     text: "Бие махбодоос өвдөж байгаа хэсгүүдээ сонгоно уу",
     type: "body-map",
@@ -159,16 +166,59 @@ export function AssessmentScreen({ onComplete }: AssessmentScreenProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSOS, setShowSOS] = useState(false);
   const [particleTrail, setParticleTrail] = useState<Array<{id: string, x: number, y: number}>>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingError, setRecordingError] = useState("");
+  const [recognitionSession, setRecognitionSession] = useState<{ stop: () => void } | null>(null);
 
   const progress = ((currentQuestion + 1) / questions.length) * 100;
   const currentQ = questions[currentQuestion];
   const isSymptomQuestion = currentQ.type === "body-map";
   const isSliderQuestion = currentQ.type === "slider";
   const isRadioQuestion = currentQ.type === "radio";
-  const hasAnswer = isSymptomQuestion ? selectedBodyParts.length > 0 : !!answers[currentQ.id] || isSliderQuestion;
+  const hasAnswer = isSymptomQuestion 
+    ? selectedBodyParts.length > 0 
+    : !!answers[currentQ.id] || isSliderQuestion || currentQ.type === "voice";
+
+  const stopActiveRecording = () => {
+    if (recognitionSession) {
+      recognitionSession.stop();
+      setRecognitionSession(null);
+    }
+    setIsRecording(false);
+  };
+
+  const handleToggleRecording = () => {
+    if (isRecording) {
+      stopActiveRecording();
+    } else {
+      setRecordingError("");
+      try {
+        const session = startSpeechToText(
+          (transcript) => {
+            setAnswers(prev => ({ ...prev, [currentQ.id]: transcript }));
+          },
+          () => {
+            setIsRecording(true);
+          },
+          () => {
+            setIsRecording(false);
+          },
+          (err) => {
+            setRecordingError(err);
+            setIsRecording(false);
+          }
+        );
+        setRecognitionSession(session);
+      } catch (e) {
+        console.error("Recording init failed", e);
+        setRecordingError("Микрофон ажиллуулахад алдаа гарлаа.");
+      }
+    }
+  };
 
   const handleNext = () => {
     if (isSubmitting) return;
+    stopActiveRecording();
 
     let finalAnswers = { ...answers };
     if (isSymptomQuestion) {
@@ -187,6 +237,7 @@ export function AssessmentScreen({ onComplete }: AssessmentScreenProps) {
   };
 
   const handleBack = () => {
+    stopActiveRecording();
     if (currentQuestion > 0) {
       setCurrentQuestion(currentQuestion - 1);
     }
@@ -350,6 +401,79 @@ export function AssessmentScreen({ onComplete }: AssessmentScreenProps) {
                   <span>{currentQ.min} {currentQ.unit}</span>
                   <span>{currentQ.max} {currentQ.unit}</span>
                 </div>
+              </div>
+            ) : currentQ.type === "voice" ? (
+              <div className="space-y-6 py-4 flex flex-col items-center">
+                <div className="w-full relative">
+                  <textarea
+                    value={answers[currentQ.id] || ""}
+                    onChange={(e) => setAnswers({ ...answers, [currentQ.id]: e.target.value })}
+                    placeholder="Энд бичих эсвэл доорх микрофон дээр дарж яриарай..."
+                    className="w-full h-32 p-4 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none text-sm text-gray-800 placeholder-gray-400 bg-gray-50 resize-none font-medium transition-all"
+                  />
+                  {(answers[currentQ.id]) && (
+                    <button
+                      onClick={() => setAnswers({ ...answers, [currentQ.id]: "" })}
+                      className="absolute bottom-3 right-3 p-2 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg transition-colors active:scale-95"
+                      title="Арилгах"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {recordingError && (
+                  <div className="text-xs font-bold text-red-500 flex items-center gap-1 bg-red-50 px-3 py-2 rounded-lg w-full">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{recordingError}</span>
+                  </div>
+                )}
+
+                <div className="flex flex-col items-center gap-3">
+                   <div className="relative flex items-center justify-center">
+                     {isRecording && (
+                       <>
+                         <div className="absolute w-28 h-28 bg-red-400/20 rounded-full animate-ping pointer-events-none" />
+                         <div className="absolute w-24 h-24 bg-red-400/30 rounded-full animate-pulse pointer-events-none" />
+                       </>
+                     )}
+                     
+                     <motion.button
+                       type="button"
+                       onClick={handleToggleRecording}
+                       whileHover={{ scale: 1.05 }}
+                       whileTap={{ scale: 0.95 }}
+                       className={`w-20 h-20 rounded-full shadow-lg flex items-center justify-center text-white transition-all cursor-pointer relative z-10 ${
+                         isRecording 
+                           ? "bg-gradient-to-br from-red-500 to-rose-600 shadow-red-200" 
+                           : "bg-gradient-to-br from-blue-500 to-indigo-600 shadow-blue-200"
+                       }`}
+                     >
+                       {isRecording ? <MicOff className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
+                     </motion.button>
+                   </div>
+
+                   <span className={`text-xs font-bold ${isRecording ? "text-red-500 animate-pulse" : "text-gray-400"}`}>
+                     {isRecording ? "Яриаг сонсож байна... (Дарж зогсооно уу)" : "Микрофон дээр дарж ярьж эхэлнэ үү"}
+                   </span>
+                </div>
+
+                {isRecording && (
+                  <div className="flex items-center gap-1 justify-center h-6">
+                    {[...Array(6)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="w-1.5 bg-red-500 rounded-full"
+                        animate={{ height: [8, 24, 8] }}
+                        transition={{
+                          duration: 0.5 + i * 0.1,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <RadioGroup.Root
