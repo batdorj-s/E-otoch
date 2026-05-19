@@ -38,6 +38,16 @@ export const medicalKnowledge: KnowledgeChunk[] = [
     content: "Монгол улсад зүрх судасны өвчлөлөөс үүдэлтэй нийт нас баралтын 52% нь артерийн даралт ихсэлттэй шууд холбоотой байдаг тул даралтыг тогтвортой хянах нь амь насанд маш чухал ач холбогдолтой.",
     source: "STEPS 2005 Судалгааны Тайлан"
   },
+  {
+    category: "hypertension",
+    content: "Толгой байнга өвдөх, шилэн хүзүүгээр хөшиж өвдөх нь артерийн даралт ихсэлтийн түгээмэл шинж тэмдэг бөгөөд зүрх болон тархины цусан хангамжийн ачаалал эрс нэмэгдсэнийг илтгэдэг тул даралтыг тогтмол хянах хэрэгтэй.",
+    source: "Монголын Зүрх судасны холбооны зөвлөмж"
+  },
+  {
+    category: "hypertension",
+    content: "Цээжээр хатгах, зүрх орчим өвдөх, амьсгаадах зэрэг нь зүрхней титэм судасны дутагдал болон артерийн даралт ихсэлтийн хүндрэлийн дохио байж болзошгүй тул яаралтай зүрхний бичлэг (ЭКГ) хийлгэх шаардлагатай.",
+    source: "ЭМЯ-ны Зүрх судасны өвчний оношилгооны удирдамж"
+  },
 
   // СУДАЛГААНЫ БАРИМТУУД: ЖИН БА ТАРГАЛАЛТ
   {
@@ -52,8 +62,8 @@ export const medicalKnowledge: KnowledgeChunk[] = [
   },
   {
     category: "obesity",
-    content: "Илүүдэл жин ба таргалалтын тархалт Монгол улсад жилээс жилд өсөж байгаа бөгөөд 2005 оны үзүүлэлтээс (46.5%) 2013 он гэхэд (54.4%) даруй 14%-иар өссөн байна.",
-    source: "STEPS 2005 & 2013 Судалгааны Тайлан"
+    content: "Хөл үе мөчөөр өвдөх, шилбээр хавагнах, хөл тулах үед хүндрэх зэрэг зовиурууд нь биеийн жингийн илүүдэл (BMI >= 25) болон хөдөлгөөний дутагдалтай шууд холбоотой байдаг. Энэ нь тулгуур эрхтний ачаалал болон судасны венийн зогсонгишлыг үүсгэдэг.",
+    source: "Гэмтэл Согог Судлалын Үндэсний Төвийн удирдамж"
   },
 
   // СУДАЛГААНЫ БАРИМТУУД: ЧИХРИЙН ШИЖИН
@@ -66,6 +76,11 @@ export const medicalKnowledge: KnowledgeChunk[] = [
     category: "diabetes",
     content: "Чихрийн шижин оношлогдсон хүмүүсийн дөнгөж 7.4% нь л цусан дахь глюкозын хэмжээгээ хэвийн түвшинд барьж, хяналтаа сайн хэрэгжүүлж байна.",
     source: "STEPS 2013 Судалгааны Тайлан"
+  },
+  {
+    category: "diabetes",
+    content: "Ам байнга цангах, ойр ойрхон шээх, шалтгаангүйгээр ядарч сульдах, турах зэрэг нь цусан дахь сахарын хэмжээ гэдгээс (Чихрийн шижин) холбоотой байж болзошгүй тул өлөн үеийн цусан дахь глюкозыг тодорхойлуулах хэрэгтэй.",
+    source: "Чихрийн шижин өвчний үндэсний стандарт"
   },
 
   // СУДАЛГААНЫ БАРИМТУУД: ТАМХИДАЛТ
@@ -100,36 +115,56 @@ export const getRelevantKnowledge = (answers: Record<string, string>, aiResults:
   const bmi = weight / (Math.pow(height / 100, 2));
   const systolic = Number(answers.bp_systolic || 120);
   const saltIntake = Number(answers.salt_intake || 5);
-  
-  if (systolic >= 140 || aiResults.heartRisk > 40 || saltIntake > 7) {
+  const symptoms = (answers.other_symptoms || "").toLowerCase();
+
+  // Хэрэглэгчийн хэлсэн зовиур дээр суурилсан ухаалаг шүүлтүүр (Dynamic Keyword Matching RAG)
+  const matchedCategories = new Set<string>();
+
+  const symptomKeywords = [
+    { keys: ["толгой", "хүзүү", "хөших", "шилэн"], category: "hypertension" },
+    { keys: ["цээж", "зүрх", "хатгах", "амьсгаа", "бачуурах"], category: "hypertension" },
+    { keys: ["хөл", "гар", "үе", "үе мөч", "хавагнах", "шилбэ", "өвдөх"], category: "obesity" },
+    { keys: ["сахар", "цангах", "шээс", "ядрах", "сульдах", "ам цангах"], category: "diabetes" },
+    { keys: ["тамхи", "уушиг", "ханиалгах"], category: "tobacco" },
+    { keys: ["архи", "шартах", "уух", "согтууруулах"], category: "alcohol" }
+  ];
+
+  symptomKeywords.forEach(group => {
+    if (group.keys.some(key => symptoms.includes(key))) {
+      matchedCategories.add(group.category);
+    }
+  });
+
+  // Нөхцөлт суурилсан шүүлтүүрүүд (Эрүүл мэндийн тоон үзүүлэлт болон шүүгдсэн категориудаар)
+  if (systolic >= 140 || aiResults.heartRisk > 40 || saltIntake > 7 || matchedCategories.has("hypertension")) {
     context += medicalKnowledge
       .filter(k => k.category === "hypertension" || k.category === "salt")
       .map(k => `- ${k.content} [Эх сурвалж: ${k.source}]`)
       .join("\n") + "\n";
   }
   
-  if (aiResults.diabetesRisk > 40 || bmi > 27) {
+  if (aiResults.diabetesRisk > 40 || bmi > 27 || matchedCategories.has("diabetes")) {
     context += medicalKnowledge
       .filter(k => k.category === "diabetes")
       .map(k => `- ${k.content} [Эх сурвалж: ${k.source}]`)
       .join("\n") + "\n";
   }
   
-  if (bmi > 25) {
+  if (bmi > 25 || matchedCategories.has("obesity")) {
     context += medicalKnowledge
       .filter(k => k.category === "obesity")
       .map(k => `- ${k.content} [Эх сурвалж: ${k.source}]`)
       .join("\n") + "\n";
   }
 
-  if (answers.smoking === "current") {
+  if (answers.smoking === "current" || matchedCategories.has("tobacco")) {
     context += medicalKnowledge
       .filter(k => k.category === "tobacco")
       .map(k => `- ${k.content} [Эх сурвалж: ${k.source}]`)
       .join("\n") + "\n";
   }
 
-  if (answers.alcohol_freq && answers.alcohol_freq !== "never") {
+  if ((answers.alcohol_freq && answers.alcohol_freq !== "never") || matchedCategories.has("alcohol")) {
     context += medicalKnowledge
       .filter(k => k.category === "alcohol")
       .map(k => `- ${k.content} [Эх сурвалж: ${k.source}]`)
