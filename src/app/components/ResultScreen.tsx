@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { AlertCircle, CheckCircle, AlertTriangle, XCircle, RefreshCw, Activity, Info, PhoneCall, User, Sparkles, Volume2, VolumeX } from "lucide-react";
+import { AlertCircle, CheckCircle, AlertTriangle, XCircle, RefreshCw, Activity, Info, PhoneCall, User, Sparkles, Volume2, VolumeX, Scan } from "lucide-react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { speakText } from "../utils/voiceUtils";
 import { HospitalFinder } from "./HospitalFinder";
@@ -13,6 +13,7 @@ interface ResultScreenProps {
   aiResults: AIResult & { aiAdvice?: string };
   onRestart: () => void;
   onViewProfile: () => void;
+  onLungAnalysis: () => void;
 }
 
 const riskConfig = {
@@ -58,7 +59,7 @@ const riskConfig = {
   },
 };
 
-export function ResultScreen({ answers, aiResults, onRestart, onViewProfile }: ResultScreenProps) {
+export function ResultScreen({ answers, aiResults, onRestart, onViewProfile, onLungAnalysis }: ResultScreenProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechSession, setSpeechSession] = useState<{ stop: () => void } | null>(null);
   const [speakError, setSpeakError] = useState("");
@@ -391,6 +392,20 @@ export function ResultScreen({ answers, aiResults, onRestart, onViewProfile }: R
             ))}
           </ul>
         </motion.div>
+
+        {}
+        <motion.button
+          onClick={onLungAnalysis}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="w-full py-6 rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-black text-lg shadow-xl shadow-blue-100 flex items-center justify-center gap-3 relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 p-4 opacity-20">
+            <Scan className="w-12 h-12" />
+          </div>
+          <Scan className="w-6 h-6" />
+          CT SCAN ШИНЖЛЭХ (AI)
+        </motion.button>
 
         {}
         <div className="grid grid-cols-2 gap-4">

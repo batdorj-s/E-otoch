@@ -4,19 +4,22 @@ import { AssessmentScreen } from "./components/AssessmentScreen";
 import { AnalysisScreen } from "./components/AnalysisScreen";
 import { ResultScreen } from "./components/ResultScreen";
 import { ProfileScreen } from "./components/ProfileScreen";
-import { PhoneCall, X, User } from "lucide-react";
+import { LungAnalysisScreen } from "./components/LungAnalysisScreen";
+import { VoiceAssistant } from "./components/VoiceAssistant";
+import { PhoneCall, X, User, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { predictHealthRisk, AIResult } from "./utils/aiInference";
 import { getOllamaAdvice } from "./utils/ollamaAI";
 import { secureStorage } from "./utils/storageUtils";
 
-type Screen = "onboarding" | "assessment" | "analysis" | "result" | "profile";
+type Screen = "onboarding" | "assessment" | "analysis" | "result" | "profile" | "lungAnalysis";
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>("onboarding");
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [aiResults, setAiResults] = useState<(AIResult & { aiAdvice?: string }) | null>(null);
   const [showSOS, setShowSOS] = useState(false);
+  const [showVoiceAI, setShowVoiceAI] = useState(false);
 
   useEffect(() => {
     const savedAnswers = secureStorage.load("eotoch_answers");
@@ -68,7 +71,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#E3F2FD] relative overflow-hidden">
-      {currentScreen === "onboarding" && <OnboardingScreen onStart={handleStart} onViewProfile={handleGoToProfile} />}
+      {currentScreen === "onboarding" && (
+        <OnboardingScreen 
+          onStart={handleStart} 
+          onViewProfile={handleGoToProfile} 
+          onVoiceAI={() => setShowVoiceAI(true)} 
+        />
+      )}
       {currentScreen === "assessment" && <AssessmentScreen onComplete={handleAssessmentComplete} />}
       {currentScreen === "analysis" && <AnalysisScreen onComplete={handleAnalysisComplete} />}
       {currentScreen === "result" && aiResults && (
@@ -77,7 +86,11 @@ export default function App() {
           aiResults={aiResults} 
           onRestart={handleRestart} 
           onViewProfile={handleGoToProfile}
+          onLungAnalysis={() => setCurrentScreen("lungAnalysis")}
         />
+      )}
+      {currentScreen === "lungAnalysis" && (
+        <LungAnalysisScreen onBack={() => setCurrentScreen("result")} />
       )}
       {currentScreen === "profile" && (
         <ProfileScreen 
@@ -89,14 +102,24 @@ export default function App() {
 
       <div className="fixed bottom-24 right-6 z-50 flex flex-col gap-3">
         {currentScreen !== "onboarding" && currentScreen !== "assessment" && (
-           <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={handleGoToProfile}
-            className="w-16 h-16 bg-white rounded-full shadow-2xl flex items-center justify-center text-blue-600 border-4 border-blue-50"
-          >
-            <User className="w-6 h-6" />
-          </motion.button>
+           <>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setShowVoiceAI(true)}
+              className="w-16 h-16 bg-blue-600 rounded-full shadow-2xl flex items-center justify-center text-white border-4 border-blue-100"
+            >
+              <MessageCircle className="w-6 h-6" />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={handleGoToProfile}
+              className="w-16 h-16 bg-white rounded-full shadow-2xl flex items-center justify-center text-blue-600 border-4 border-blue-50"
+            >
+              <User className="w-6 h-6" />
+            </motion.button>
+          </>
         )}
         <motion.button
           whileHover={{ scale: 1.1 }}
@@ -109,6 +132,14 @@ export default function App() {
       </div>
 
       <AnimatePresence>
+        {showVoiceAI && (
+          <VoiceAssistant 
+            isOpen={showVoiceAI} 
+            onClose={() => setShowVoiceAI(false)} 
+            initialAnswers={answers}
+            aiResults={aiResults}
+          />
+        )}
         {showSOS && (
           <motion.div
             initial={{ opacity: 0 }}

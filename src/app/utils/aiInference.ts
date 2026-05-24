@@ -1,5 +1,10 @@
-// Using global ort from script tag if available, otherwise fallback to import
-const ort = (window as any).ort;
+import * as ort from 'onnxruntime-web';
+
+// Fix for 'e.getValue is not a function' in Vite
+ort.env.wasm.proxy = false;
+ort.env.wasm.numThreads = 1;
+const VERSION = "1.19.0";
+ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${VERSION}/dist/`;
 
 export interface AIResult {
   diabetesRisk: number;
@@ -12,42 +17,31 @@ export interface AIResult {
     value: number;
     color: string;
   }[];
-  mlRiskLevel?: string; // New field for real ML output
+  mlRiskLevel?: string;
 }
 
 // Global variable to keep the session
-let session: any = null;
+let session: ort.InferenceSession | null = null;
 
 async function loadModel() {
-  if (!ort) {
-    console.error("ONNX Runtime (ort) not found. Check if the script tag in index.html is correct.");
-    return;
-  }
+  if (session) return;
 
-  if (!session) {
+  try {
+    console.log("Loading ONNX Model (WASM)...");
+    session = await ort.InferenceSession.create("/healthModel.onnx", { 
+      executionProviders: ["wasm"],
+      graphOptimizationLevel: "all"
+    });
+    console.log("ONNX Model loaded successfully (WASM)");
+  } catch (e) {
+    console.warn("ONNX WASM load failed, trying WebGL...", e);
     try {
-      // Configuration to prevent 'e.getValue is not a function' error
-      ort.env.wasm.numThreads = 1;
-      ort.env.wasm.proxy = false;
-      ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.0/dist/";
-
-      // Try WASM first with conservative settings
       session = await ort.InferenceSession.create("/healthModel.onnx", { 
-        executionProviders: ["wasm"],
-        graphOptimizationLevel: "all"
+        executionProviders: ["webgl"] 
       });
-      console.log("ONNX Model loaded successfully with wasm backend");
-    } catch (e) {
-      console.warn("WASM backend failed, trying webgl...", e);
-      try {
-        // Fallback to WebGL if WASM fails
-        session = await ort.InferenceSession.create("/healthModel.onnx", { 
-          executionProviders: ["webgl"] 
-        });
-        console.log("ONNX Model loaded successfully with webgl backend");
-      } catch (webglError) {
-        console.error("All ONNX backends failed", webglError);
-      }
+      console.log("ONNX Model loaded successfully (WebGL)");
+    } catch (err2) {
+      console.error("All ONNX backends failed. Using fallback rule-based logic.");
     }
   }
 }
@@ -67,44 +61,39 @@ export const predictHealthRisk = async (answers: Record<string, string>): Promis
   const gender = answers.gender || 'male';
   const geneticRisk = answers.genetic_risk === 'yes';
   const specificSymptom = answers.specific_symptoms || 'none';
-  const activity = answers.activity === 'low' ? 1 : 0;
-  const fruit_veg = answers.diet === 'bad' ? 1 : 0;
+  const activity = answers.activity === 'active' ? 1 : 0;
+  const fruitVeg = answers.diet === 'good' ? 1 : 0;
 
-  // 1. REAL ML INFERENCE (Random Forest via ONNX)
+  // 1. REAL ML INFERENCE
   let mlRiskLevel = "Low";
+  let mlScore = 0; // 0: Low, 1: Moderate, 2: High
+
   if (session) {
     try {
-      // Input features match train_model.py: 
-      // ['age', 'gender', 'smoking', 'alcohol', 'fruit_veg', 'activity', 'bmi', 'sys_bp']
       const inputData = new Float32Array([
         age,
         gender === 'male' ? 1 : 0,
         smoking === 'current' ? 1 : 0,
         alcoholFreq !== 'never' ? 1 : 0,
-        fruit_veg,
+        fruitVeg,
         activity,
         bmi,
         systolic
       ]);
       const tensor = new ort.Tensor("float32", inputData, [1, 8]);
       
-      console.log("Session output names:", session.outputNames);
-      
-      // IMPORTANT: Explicitly request ONLY 'output_label' to skip the
-      // non-tensor probability output which causes the ERROR_CODE: 9 error.
+      // Run inference - specifying output_label to avoid common probability errors
       const results = await session.run({ float_input: tensor }, ["output_label"]);
-      
       const outputRaw = results["output_label"].data[0];
-      const output = typeof outputRaw === 'bigint' ? Number(outputRaw) : Number(outputRaw);
+      mlScore = typeof outputRaw === 'bigint' ? Number(outputRaw) : Number(outputRaw);
       
-      mlRiskLevel = output === 2 ? "High" : output === 1 ? "Moderate" : "Low";
-      console.log("Real ML Inference Result:", mlRiskLevel);
+      mlRiskLevel = mlScore === 2 ? "High" : mlScore === 1 ? "Moderate" : "Low";
     } catch (e) {
-      console.error("Inference failed", e);
+      console.error("ML Inference failed", e);
     }
   }
 
-  // 2. EXPLAINABLE LOGIC (Rule-based for UI and specific risks)
+  // 2. EXPLAINABLE LOGIC & RISK SCORING
   const reasons: string[] = [];
   const contributionMap: Record<string, number> = {
     "Жин (BMI)": 0,
@@ -115,59 +104,47 @@ export const predictHealthRisk = async (answers: Record<string, string>): Promis
     "Генетик/Бусад": 0
   };
 
-  let diabBase = 5;
+  // Diabetes Risk
+  let diabBase = mlScore === 2 ? 60 : mlScore === 1 ? 30 : 10;
   if (bmi > 25) {
-    diabBase += 25;
+    diabBase += 15;
     contributionMap["Жин (BMI)"] += 15;
-    if (gender === 'female') {
-      diabBase += 10;
-      reasons.push("Биеийн жингийн илүүдэл (Монгол эмэгтэйчүүдийн дунд төвийн таргалалт өндөр байдаг)");
-    } else {
-      reasons.push("Биеийн жингийн илүүдэл (BMI > 25)");
-    }
+    reasons.push(gender === 'female' ? "Биеийн жингийн илүүдэл (Монгол эмэгтэйчүүдийн онцлог)" : "Биеийн жингийн илүүдэл (BMI > 25)");
   }
   if (age > 45) {
-    diabBase += 20;
-    contributionMap["Генетик/Бусад"] += 10;
-    reasons.push("Насжилтын хамааралтай чихрийн шижингийн эрсдэл (45+ нас)");
-  }
-  if (geneticRisk) {
-    diabBase *= 1.4;
-    contributionMap["Генетик/Бусад"] += 15;
-    reasons.push("Гэр бүлийн генетик удамшил");
+    diabBase += 10;
+    contributionMap["Генетик/Бусад"] += 5;
+    reasons.push("Насжилтын хамааралтай эрсдэл (45+ нас)");
   }
 
-  let heartBase = 10;
+  // Heart Risk
+  let heartBase = mlScore === 2 ? 70 : mlScore === 1 ? 40 : 15;
   if (systolic > 140) {
-    heartBase += 35;
+    heartBase += 20;
     contributionMap["Цусны даралт"] += 30;
-    reasons.push("Цусны даралт ихсэлт (Зүрх судасны өвчлөлийн гол шалтгаан)");
+    reasons.push("Цусны даралт ихсэлт");
   }
   if (saltIntake > 7) {
-    heartBase += 20;
+    heartBase += 15;
     contributionMap["Давсны хэрэглээ"] += 20;
-    reasons.push("Давсны өндөр хэрэглээ (Монголчуудын дундаж 11г буюу ДЭМБ-ын зөвлөмжөөс 2 дахин их)");
-  }
-  if (smoking === 'current') {
-    heartBase += 20;
-    contributionMap["Тамхидалт"] += 20;
-    reasons.push("Идэвхтэй тамхидалт");
+    reasons.push("Давсны өндөр хэрэглээ (Монголчуудын дундаж ДЭМБ-аас 2 дахин их)");
   }
 
-  let cancerBase = 5;
+  // Cancer Risk
+  let cancerBase = mlScore === 2 ? 50 : mlScore === 1 ? 25 : 10;
   if (smoking === 'current') {
-    cancerBase += 35;
-    contributionMap["Тамхидалт"] += 20;
+    cancerBase += 30;
+    contributionMap["Тамхидалт"] += 25;
+    reasons.push("Идэвхтэй тамхидалт");
   }
   if (airPollution > 7) {
-    cancerBase += 20;
+    cancerBase += 15;
     contributionMap["Агаарын бохирдол"] += 15;
-    reasons.push("Агаарын бохирдол (Уушгины өвчлөлд нөлөөлөх өндөр өртөлт)");
+    reasons.push("Агаарын бохирдол");
   }
   if (specificSymptom === 'coughing_blood') {
     cancerBase += 40;
-    contributionMap["Генетик/Бусад"] += 20;
-    reasons.push("Цусаар ханиалгах (Хавдрын ноцтой шинж тэмдэг байж болзошгүй)");
+    reasons.push("Цусаар ханиалгах (Яаралтай үзүүлнэ үү)");
   }
 
   const diabetesRisk = Math.min(diabBase, 100);
@@ -198,6 +175,6 @@ export const predictHealthRisk = async (answers: Record<string, string>): Promis
     overallScore: Math.round((diabetesRisk + heartRisk + cancerRisk) / 3),
     reasons: Array.from(new Set(reasons)),
     contributions,
-    mlRiskLevel // Return the real ML result too
+    mlRiskLevel
   };
 };

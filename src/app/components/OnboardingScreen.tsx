@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { Heart, Shield, User, Activity, Bell, Search, History, X, Ruler, Weight, MapPin, Phone, ChevronDown, Map } from "lucide-react";
+import { Heart, Shield, User, Activity, Bell, Search, History, X, Ruler, Weight, MapPin, Phone, ChevronDown, Map, MessageCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import hospitalsData from "../data/hospitals.json";
 import { calculateDistance } from "../utils/geoUtils";
@@ -7,9 +7,10 @@ import { calculateDistance } from "../utils/geoUtils";
 interface OnboardingScreenProps {
   onStart: () => void;
   onViewProfile: () => void;
+  onVoiceAI: () => void;
 }
 
-export function OnboardingScreen({ onStart, onViewProfile }: OnboardingScreenProps) {
+export function OnboardingScreen({ onStart, onViewProfile, onVoiceAI }: OnboardingScreenProps) {
   const [showBMICalc, setShowBMICalc] = useState(false);
   const [bmiData, setBMIData] = useState({ height: 170, weight: 65 });
   const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({
@@ -178,8 +179,17 @@ export function OnboardingScreen({ onStart, onViewProfile }: OnboardingScreenPro
                 <span className="text-xs font-bold text-gray-900">BMI тооцоолуур</span>
               </button>
               <button 
+                onClick={onVoiceAI}
+                className="bg-blue-600 p-4 rounded-2xl border border-blue-500 shadow-md flex flex-col items-center text-center active:scale-95 transition-all"
+              >
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                  <MessageCircle className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xs font-bold text-white">Voice AI</span>
+              </button>
+              <button 
                 onClick={onViewProfile}
-                className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center text-center active:scale-95 transition-all"
+                className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center text-center active:scale-95 transition-all col-span-2"
               >
                 <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center mb-3">
                   <History className="w-5 h-5 text-purple-600" />
