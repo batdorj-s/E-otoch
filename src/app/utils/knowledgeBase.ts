@@ -17,13 +17,15 @@ export const getRelevantKnowledge = (answers: Record<string, string>, aiResults:
   const bmi = weight / (Math.pow(height / 100, 2));
   const systolic = Number(answers.bp_systolic || 120);
   const symptoms = (answers.other_symptoms || "").toLowerCase();
+  
+  const safeAiResults = aiResults || {};
 
   // 1. Identify priority categories based on user data
   const targetCategories = new Set<string>(["general"]);
 
-  if (systolic >= 135 || aiResults.heartRisk > 30) targetCategories.add("hypertension");
-  if (bmi > 25 || aiResults.obesityRisk > 30) targetCategories.add("obesity");
-  if (aiResults.diabetesRisk > 30) targetCategories.add("diabetes");
+  if (systolic >= 135 || safeAiResults.heartRisk > 30) targetCategories.add("hypertension");
+  if (bmi > 25 || safeAiResults.obesityRisk > 30) targetCategories.add("obesity");
+  if (safeAiResults.diabetesRisk > 30) targetCategories.add("diabetes");
   if (answers.smoking === "current") targetCategories.add("tobacco");
   if (answers.alcohol_freq && answers.alcohol_freq !== "never") targetCategories.add("alcohol");
 

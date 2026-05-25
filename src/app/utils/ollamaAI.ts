@@ -21,7 +21,7 @@ const expandQuery = async (context: AgentContext): Promise<string> => {
     - Жин/Өндөр: ${context.answers.weight}кг, ${context.answers.height}см
     - Даралт: ${context.answers.bp_systolic}
     - Зовиур: ${context.answers.other_symptoms || "Байхгүй"}
-    - Эрсдэлүүд: Чихрийн шижин ${context.aiResults.diabetesRisk}%, Зүрх судас ${context.aiResults.heartRisk}%
+    - Эрсдэлүүд: Чихрийн шижин ${context.aiResults?.diabetesRisk || 0}%, Зүрх судас ${context.aiResults?.heartRisk || 0}%
     
     Дараах хэлбэрээр хариул (Зөвхөн түлхүүр үгс):
     Сэдвүүд: [Сэдвүүдийн жагсаалт]
@@ -51,7 +51,7 @@ const generateFinalResponse = async (context: AgentContext): Promise<string> => 
     - Нас: ${context.answers.age}
     - BMI: ${(Number(context.answers.weight) / (Math.pow(Number(context.answers.height) / 100, 2))).toFixed(1)}
     - Даралт: ${context.answers.bp_systolic}
-    - ML Эрсдэл: Зүрх судас ${context.aiResults.heartRisk}%, Чихрийн шижин ${context.aiResults.diabetesRisk}%
+    - ML Эрсдэл: Зүрх судас ${context.aiResults?.heartRisk || 0}%, Чихрийн шижин ${context.aiResults?.diabetesRisk || 0}%
 
     ШИНЖЛЭХ УХААНЫ БАРИМТУУД (RAG):
     ${context.retrievedFacts}

@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Mic, MicOff, Send, X, Bot, User, Loader2, Sparkles, Volume2, VolumeX } from "lucide-react";
 import { getOllamaAdvice } from "../utils/ollamaAI";
+import { secureStorage } from "../utils/storageUtils";
+import { predictHealthRisk } from "../utils/aiInference";
+import { syncVoiceMessagesToCloud, fetchVoiceMessagesFromCloud } from "../utils/mongoDB";
 
 interface Message {
   id: string;
@@ -14,9 +17,10 @@ interface VoiceAssistantProps {
   onClose: () => void;
   initialAnswers?: Record<string, string>;
   aiResults?: any;
+  onUpdateAnswers?: (newAnswers: Record<string, string>, newResults: any) => void;
 }
 
-export function VoiceAssistant({ isOpen, onClose, initialAnswers = {}, aiResults = {} }: VoiceAssistantProps) {
+export function VoiceAssistant({ isOpen, onClose, initialAnswers = {}, aiResults = {}, onUpdateAnswers }: VoiceAssistantProps) {
   const [isListening, setIsListening] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { id: "1", role: "assistant", text: "Сайн байна уу! Би бол Eotoch AI байна. Та өөрийн биед илэрч буй зовиур болон эрүүл мэндийн талаар асуух зүйлээ надад хэлээрэй." }
@@ -28,6 +32,22 @@ export function VoiceAssistant({ isOpen, onClose, initialAnswers = {}, aiResults
   
   // Speech Recognition Setup
   const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    const loadMessages = async () => {
+      const savedMessages = secureStorage.load("eotoch_voice_messages");
+      if (savedMessages && savedMessages.length > 0) {
+        setMessages(savedMessages);
+      }
+
+      const cloudMessages = await fetchVoiceMessagesFromCloud();
+      if (cloudMessages && cloudMessages.length > 0) {
+        setMessages(cloudMessages);
+        secureStorage.save("eotoch_voice_messages", cloudMessages);
+      }
+    };
+    loadMessages();
+  }, []);
 
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -97,22 +117,54 @@ export function VoiceAssistant({ isOpen, onClose, initialAnswers = {}, aiResults
     if (!inputText.trim()) return;
 
     const userMessage: Message = { id: Date.now().toString(), role: "user", text: inputText };
-    setMessages(prev => [...prev, userMessage]);
     const currentInput = inputText;
     setInputText("");
     setIsLoading(true);
 
+    // Optimistically add user message
+    setMessages(prev => {
+      const updated = [...prev, userMessage];
+      secureStorage.save("eotoch_voice_messages", updated);
+      syncVoiceMessagesToCloud(updated);
+      return updated;
+    });
+
     try {
-      // We pass a simplified answers object for the chat context
-      const chatContext = { ...initialAnswers, user_query: currentInput };
-      const response = await getOllamaAdvice(chatContext as any, aiResults);
+      // 1. Append/update the new symptom from user's voice input
+      const existingSymptoms = initialAnswers.other_symptoms || "";
+      const updatedSymptoms = existingSymptoms 
+        ? `${existingSymptoms}, ${currentInput}` 
+        : currentInput;
+        
+      const updatedAnswers = { 
+        ...initialAnswers, 
+        other_symptoms: updatedSymptoms 
+      };
+
+      // 2. Recalculate risks using local ML / rule-based model
+      const newResults = await predictHealthRisk(updatedAnswers);
+
+      // 3. Get LLM response using safeguarded Ollama / Gemini fallback
+      const response = await getOllamaAdvice(updatedAnswers, newResults);
       
       const assistantMessage: Message = { 
         id: (Date.now() + 1).toString(), 
         role: "assistant", 
         text: response 
       };
-      setMessages(prev => [...prev, assistantMessage]);
+
+      setMessages(prev => {
+        const updated = [...prev, assistantMessage];
+        secureStorage.save("eotoch_voice_messages", updated);
+        syncVoiceMessagesToCloud(updated);
+        return updated;
+      });
+
+      // 4. Update the main App state so dashboard immediately reflects the new analysis and advice
+      if (onUpdateAnswers) {
+        onUpdateAnswers(updatedAnswers, { ...newResults, aiAdvice: response });
+      }
+
       speakText(response);
     } catch (error) {
       console.error("Failed to get AI response", error);

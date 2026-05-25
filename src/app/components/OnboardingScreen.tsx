@@ -8,9 +8,10 @@ interface OnboardingScreenProps {
   onStart: () => void;
   onViewProfile: () => void;
   onVoiceAI: () => void;
+  onLungAnalysis: () => void;
 }
 
-export function OnboardingScreen({ onStart, onViewProfile, onVoiceAI }: OnboardingScreenProps) {
+export function OnboardingScreen({ onStart, onViewProfile, onVoiceAI, onLungAnalysis }: OnboardingScreenProps) {
   const [showBMICalc, setShowBMICalc] = useState(false);
   const [bmiData, setBMIData] = useState({ height: 170, weight: 65 });
   const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({
@@ -189,12 +190,21 @@ export function OnboardingScreen({ onStart, onViewProfile, onVoiceAI }: Onboardi
               </button>
               <button 
                 onClick={onViewProfile}
-                className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center text-center active:scale-95 transition-all col-span-2"
+                className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center text-center active:scale-95 transition-all"
               >
                 <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center mb-3">
                   <History className="w-5 h-5 text-purple-600" />
                 </div>
                 <span className="text-xs font-bold text-gray-900">Шинжилгээний түүх</span>
+              </button>
+              <button 
+                onClick={onLungAnalysis}
+                className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center text-center active:scale-95 transition-all"
+              >
+                <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center mb-3">
+                  <Search className="w-5 h-5 text-teal-600" />
+                </div>
+                <span className="text-xs font-bold text-gray-900">CT Шинжилгээ (AI)</span>
               </button>
             </div>
           </div>

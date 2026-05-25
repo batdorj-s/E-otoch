@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { predictHealthRisk, AIResult } from "./utils/aiInference";
 import { getOllamaAdvice } from "./utils/ollamaAI";
 import { secureStorage } from "./utils/storageUtils";
+import { syncUserDataToCloud, fetchUserDataFromCloud } from "./utils/mongoDB";
 
 type Screen = "onboarding" | "assessment" | "analysis" | "result" | "profile" | "lungAnalysis";
 
@@ -22,13 +23,24 @@ export default function App() {
   const [showVoiceAI, setShowVoiceAI] = useState(false);
 
   useEffect(() => {
-    const savedAnswers = secureStorage.load("eotoch_answers");
-    const savedResults = secureStorage.load("eotoch_results");
-    
-    if (savedAnswers && savedResults) {
-      setAnswers(savedAnswers);
-      setAiResults(savedResults);
-    }
+    const loadData = async () => {
+      const savedAnswers = secureStorage.load("eotoch_answers");
+      const savedResults = secureStorage.load("eotoch_results");
+      
+      if (savedAnswers && savedResults) {
+        setAnswers(savedAnswers);
+        setAiResults(savedResults);
+      }
+
+      const cloudData = await fetchUserDataFromCloud();
+      if (cloudData && cloudData.answers && cloudData.results) {
+        setAnswers(cloudData.answers);
+        setAiResults(cloudData.results);
+        secureStorage.save("eotoch_answers", cloudData.answers);
+        secureStorage.save("eotoch_results", cloudData.results);
+      }
+    };
+    loadData();
   }, []);
 
   const handleStart = () => {
@@ -48,6 +60,9 @@ export default function App() {
       setAiResults(updatedResults);
       secureStorage.save("eotoch_answers", userAnswers);
       secureStorage.save("eotoch_results", updatedResults);
+      
+      // Sync to MongoDB Atlas cloud in the background
+      syncUserDataToCloud(userAnswers, updatedResults);
     } catch (e) {
       console.error("Health prediction or Ollama advice failed", e);
     }
@@ -76,6 +91,7 @@ export default function App() {
           onStart={handleStart} 
           onViewProfile={handleGoToProfile} 
           onVoiceAI={() => setShowVoiceAI(true)} 
+          onLungAnalysis={() => setCurrentScreen("lungAnalysis")}
         />
       )}
       {currentScreen === "assessment" && <AssessmentScreen onComplete={handleAssessmentComplete} />}
@@ -138,6 +154,13 @@ export default function App() {
             onClose={() => setShowVoiceAI(false)} 
             initialAnswers={answers}
             aiResults={aiResults}
+            onUpdateAnswers={(newAnswers, newResults) => {
+              setAnswers(newAnswers);
+              setAiResults(newResults);
+              secureStorage.save("eotoch_answers", newAnswers);
+              secureStorage.save("eotoch_results", newResults);
+              syncUserDataToCloud(newAnswers, newResults);
+            }}
           />
         )}
         {showSOS && (

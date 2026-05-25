@@ -37,6 +37,10 @@ export default defineConfig({
         target: 'https://api.chimege.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/chimege-api/, '')
+      },
+      '/api': {
+        target: 'http://localhost:5050',
+        changeOrigin: true,
       }
     }
   },
